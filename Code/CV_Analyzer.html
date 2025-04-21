@@ -180,8 +180,12 @@
         });
         outputHTML += `</ul>`;
 
-        document.getElementById("output").innerHTML = outputHTML;
-        document.getElementById("output").style.display = "block";
+        const outputDiv = document.getElementById("output");
+        outputDiv.innerHTML = outputHTML;
+        outputDiv.style.display = "block";
+
+        // Auto-scroll to result section
+        outputDiv.scrollIntoView({ behavior: "smooth" });
       };
 
       reader.readAsArrayBuffer(file);
