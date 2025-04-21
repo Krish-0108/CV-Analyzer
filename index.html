@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fit My CV</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('bg.png') no-repeat center center fixed;
+      background-size: cover;
+      color: #333;
+      animation: fadeIn 1.2s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      z-index: 100;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.8em;
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 1px;
+      animation: fadeIn 1.2s ease-in-out;
+    }
+
+    .btn-container {
+      text-align: center;
+      margin: 150px 0 40px;
+    }
+
+    .pdf-btn {
+      background: linear-gradient(135deg, #3498db, #6dd5fa);
+      color: #fff;
+      padding: 14px 36px;
+      border: none;
+      border-radius: 30px;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pdf-btn:hover {
+      background: linear-gradient(135deg, #2980b9, #5dade2);
+      transform: scale(1.05);
+    }
+
+    .pdf-btn::before {
+      content: '📄';
+      font-size: 1.2em;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 0 20px 60px;
+    }
+
+    .about, .result {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      padding: 35px;
+      color: #444;
+      box-shadow: 0 0 20px rgba(0,0,0,0.05);
+      margin-top: 50px;
+      border: 1px solid #eee;
+    }
+
+    .about h2, .result h3 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+    }
+
+    .result ul {
+      padding-left: 20px;
+    }
+
+    .result li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fit My CV</h1>
+  </header>
+
+  <div class="container">
+    <div class="btn-container">
+      <label for="pdf-upload" class="pdf-btn">Select a PDF</label>
+      <input type="file" id="pdf-upload" accept=".pdf" onchange="handlePDF(event)" />
+    </div>
+
+    <div class="about">
+      <h2>About Us</h2>
+      <p>Fit My CV helps you manage and showcase your resume effortlessly. Whether you're just starting out or polishing your career path, we offer a minimal yet powerful way to keep your profile organized and impactful.</p>
+    </div>
+
+    <div id="output" class="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    const sampleJobs = [
+      { title: "Frontend Developer", requiredSkills: ["HTML", "CSS", "JavaScript", "React"] },
+      { title: "Backend Developer", requiredSkills: ["Node.js", "Express", "MongoDB", "SQL"] },
+      { title: "Data Analyst", requiredSkills: ["Excel", "Python", "Power BI", "SQL"] },
+      { title: "Cybersecurity Analyst", requiredSkills: ["Networking", "Python", "Linux", "Security"] },
+      { title: "Mobile Developer", requiredSkills: ["Flutter", "Swift", "JavaScript"] },
+      { title: "Tech Lead", requiredSkills: ["JavaScript", "TypeScript", "Python", "Java", "C#"] }
+    ];
+
+    function extractSkills(text) {
+      const skillKeywords = [
+        "HTML", "CSS", "JavaScript", "TypeScript", "React", "Node.js", "Express", "MongoDB", "SQL",
+        "Excel", "Python", "Power BI", "Networking", "Linux", "Security", "Flutter", "Swift", "Java", "C#", "Go"
+      ];
+      const foundSkills = skillKeywords.filter(skill =>
+        text.toLowerCase().includes(skill.toLowerCase())
+      );
+      return [...new Set(foundSkills)];
+    }
+
+    function suggestJobs(userSkills) {
+      const jobMatches = sampleJobs.map(job => {
+        const matchedSkills = job.requiredSkills.filter(skill => userSkills.includes(skill));
+        const compatibility = Math.round((matchedSkills.length / job.requiredSkills.length) * 100);
+        return { ...job, matchedSkills, compatibility };
+      });
+
+      return jobMatches.sort((a, b) => b.compatibility - a.compatibility).slice(0, 3);
+    }
+
+    async function handlePDF(event) {
+      const file = event.target.files[0];
+      if (!file || file.type !== "application/pdf") {
+        alert("Please select a valid PDF file.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+        let text = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map(item => item.str).join(" ");
+          text += pageText + " ";
+        }
+
+        const skills = extractSkills(text);
+        const jobSuggestions = suggestJobs(skills);
+
+        let outputHTML = `<h3>Skills Found:</h3><ul>${skills.map(skill => `<li>${skill}</li>`).join("")}</ul>`;
+        outputHTML += `<h3>Top 3 Job Suggestions:</h3><ul>`;
+        jobSuggestions.forEach(job => {
+          outputHTML += `<li><strong>${job.title}</strong> - Match: ${job.compatibility}%<br><em>Matched Skills:</em> ${job.matchedSkills.join(", ")}</li>`;
+        });
+        outputHTML += `</ul>`;
+
+        const outputDiv = document.getElementById("output");
+        outputDiv.innerHTML = outputHTML;
+        outputDiv.style.display = "block";
+
+        // Auto-scroll to result section
+        outputDiv.scrollIntoView({ behavior: "smooth" });
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+  </script>
+</body>
+</html>
